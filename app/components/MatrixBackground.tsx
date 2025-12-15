@@ -28,6 +28,7 @@ export default function MatrixBackground() {
     let drops: number[] = [];
 
     function resize() {
+      if (!canvas || !ctx) return;
       dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
       width = window.innerWidth;
       height = window.innerHeight;
@@ -47,6 +48,7 @@ export default function MatrixBackground() {
     }
 
     function step() {
+      if (!canvas || !ctx) return;
       // Semi-transparent black overlay for trail effect (darker, slower fade)
       ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
       ctx.fillRect(0, 0, width, height);
