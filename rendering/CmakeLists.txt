@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.11)
+project(raylib_wasm)
+
+set(CMAKE_C_COMPILER "emcc")
+set(CMAKE_CXX_COMPILER "em++")
+
+# Raylib als git submodule oder extern einbinden
+# Für dieses Beispiel: Statische Raylib-Library manuell verlinken
+# Du musst raylib für Emscripten kompilieren und hier verlinken
+
+# Hauptausführbare Datei
+add_executable(raylib_wasm main.cpp)
+
+# Raylib Header einbinden (passe den Pfad an)
+target_include_directories(raylib_wasm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Emscripten Linker Flags
+set_target_properties(raylib_wasm PROPERTIES
+    LINK_FLAGS "-s USE_GLFW=3 -s ASSERTIONS=1 -s WASM=1 -s ASYNCIFY -s GL_ENABLE_GET_PROC_ADDRESS=1 --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/Assets@Assets --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/include/shell.html"
+    SUFFIX ".html"
+)
+
+# Raylib library verlinken
+target_link_libraries(raylib_wasm 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/libraylib.a
+)
+
+# Output nach public/ kopieren
+add_custom_command(TARGET raylib_wasm POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.js
+        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.js
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.wasm
+        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.wasm
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.data
+        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.data
+)
