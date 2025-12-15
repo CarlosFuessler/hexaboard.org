@@ -25,44 +25,6 @@ export default function Showcase() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const canvas = document.getElementById('matrix-canvas') as HTMLCanvasElement;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    const chars = '01';
-    const fontSize = 14;
-    const columns = Math.floor(canvas.width / fontSize);
-    const drops: number[] = Array(columns).fill(1);
-
-    function draw() {
-      if (!ctx || !canvas) return;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#22c55e';
-      ctx.font = `${fontSize}px monospace`;
-
-      for (let i = 0; i < drops.length; i++) {
-        const text = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    }
-
-    const interval = setInterval(draw, 50);
-    return () => clearInterval(interval);
-  }, [visible]);
-
   return (
     <section id="showcase" className="py-32 px-6 flex flex-col items-center relative" ref={ref}>
       <div className="w-full max-w-3xl mx-auto">
@@ -76,10 +38,6 @@ export default function Showcase() {
 
         <div className={`glass-card p-4 md:p-8 ${visible ? 'fade-in' : 'opacity-0'}`} style={{ animationDelay: '0.2s' }}>
           <div className="w-full aspect-square bg-gradient-to-b from-black/60 to-black/40 rounded-2xl overflow-hidden border border-green-500/20 relative">
-            {/* Matrix Background */}
-            <div className="absolute inset-0 opacity-20">
-              <canvas id="matrix-canvas" className="w-full h-full" />
-            </div>
             <Suspense fallback={
               <div className="w-full h-full flex flex-col items-center justify-center text-white/50">
                 <div className="w-12 h-12 border-2 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
