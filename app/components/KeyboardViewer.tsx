@@ -53,15 +53,17 @@ export default function KeyboardViewer() {
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
       >
-        {/* Optimized Lighting */}
-        <ambientLight intensity={0.5} />
+        {/* Green Lighting */}
+        <ambientLight intensity={0.8} color="#22c55e" />
         <directionalLight 
           position={[5, 5, 5]} 
-          intensity={1.5} 
+          intensity={2.5} 
+          color="#22c55e"
           castShadow
           shadow-mapSize={[1024, 1024]}
         />
-        <directionalLight position={[-3, 3, -3]} intensity={0.4} />
+        <directionalLight position={[-3, 3, -3]} intensity={1.2} color="#22c55e" />
+        <pointLight position={[0, 3, 0]} intensity={1.0} color="#10b981" />
         
         <Suspense fallback={<FallbackModel />}>
           <KeyboardModel />
