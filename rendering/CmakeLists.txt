@@ -1,39 +1,51 @@
 cmake_minimum_required(VERSION 3.11)
-project(raylib_wasm)
+project(hexaboard_viewer)
 
-set(CMAKE_C_COMPILER "emcc")
-set(CMAKE_CXX_COMPILER "em++")
+set(CMAKE_CXX_STANDARD 17)
 
-# Raylib als git submodule oder extern einbinden
-# Für dieses Beispiel: Statische Raylib-Library manuell verlinken
-# Du musst raylib für Emscripten kompilieren und hier verlinken
+# Platform detection
+if(EMSCRIPTEN)
+    set(PLATFORM_WEB TRUE)
+    message(STATUS "Building for WebAssembly")
+else()
+    set(PLATFORM_DESKTOP TRUE)
+    message(STATUS "Building for Desktop")
+endif()
 
-# Hauptausführbare Datei
-add_executable(raylib_wasm main.cpp)
+# Raylib
+find_package(raylib QUIET)
+if (NOT raylib_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        raylib
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG 5.0
+    )
+    FetchContent_MakeAvailable(raylib)
+endif()
 
-# Raylib Header einbinden (passe den Pfad an)
-target_include_directories(raylib_wasm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# Executable
+add_executable(${PROJECT_NAME} main.cpp)
 
-# Emscripten Linker Flags
-set_target_properties(raylib_wasm PROPERTIES
-    LINK_FLAGS "-s USE_GLFW=3 -s ASSERTIONS=1 -s WASM=1 -s ASYNCIFY -s GL_ENABLE_GET_PROC_ADDRESS=1 --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/Assets@Assets --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/include/shell.html"
-    SUFFIX ".html"
-)
-
-# Raylib library verlinken
-target_link_libraries(raylib_wasm 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/libraylib.a
-)
-
-# Output nach public/ kopieren
-add_custom_command(TARGET raylib_wasm POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.js
-        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.js
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.wasm
-        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.wasm
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/raylib_wasm.data
-        ${CMAKE_CURRENT_SOURCE_DIR}/../public/raylib_wasm.data
-)
+# Platform-specific settings
+if(PLATFORM_WEB)
+    # WebAssembly specific flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPLATFORM_WEB")
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+    
+    # Emscripten link flags
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        LINK_FLAGS "-s USE_GLFW=3 -s ASSERTIONS=1 -s WASM=1 -s ASYNCIFY -s GL_ENABLE_GET_PROC_ADDRESS=1 --preload-file ${CMAKE_SOURCE_DIR}/Assets@Assets/"
+    )
+    
+    target_link_libraries(${PROJECT_NAME} raylib)
+else()
+    # Desktop specific
+    target_compile_definitions(${PROJECT_NAME} PRIVATE PLATFORM_DESKTOP)
+    target_link_libraries(${PROJECT_NAME} raylib)
+    
+    # macOS specific
+    if(APPLE)
+        target_link_libraries(${PROJECT_NAME} "-framework IOKit" "-framework Cocoa" "-framework OpenGL")
+    endif()
+endif()

@@ -1,0 +1,3 @@
+/Users/carlos/Documents/Projects/hexaboard_page/hexaboard/rendering/build/CMakeFiles/hexaboard_viewer.dir
+/Users/carlos/Documents/Projects/hexaboard_page/hexaboard/rendering/build/CMakeFiles/edit_cache.dir
+/Users/carlos/Documents/Projects/hexaboard_page/hexaboard/rendering/build/CMakeFiles/rebuild_cache.dir
