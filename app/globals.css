@@ -133,24 +133,12 @@ body {
 }
 
 /* ========== BUTTONS ========== */
-.btn-primary {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  color: white;
-  padding: 0.875rem 2rem;
-  border-radius: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  border: none;
-  cursor: pointer;
-}
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.4);
-}
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   color: white;
   padding: 0.875rem 2rem;
   border-radius: 12px;

@@ -16,12 +16,14 @@ export default function Specs() {
   }, []);
 
   const specs = [
-    { label: 'Layout', value: 'Compact 2x6' },
+    { label: 'Layout', value: 'Compact 2x3' },
     { label: 'Switches', value: 'Hot-Swappable' },
     { label: 'Firmware', value: 'ZMK (Open Source)' },
     { label: 'Connectivity', value: 'USB-C' },
     { label: 'Material', value: 'PLA' },
     { label: 'Keycaps', value: 'PBT Double-Shot' },
+    { label: 'Battery', value: 'Rechargeable Lipo' },
+    { label: 'Display', value: 'OLED' },
   ];
 
   return (

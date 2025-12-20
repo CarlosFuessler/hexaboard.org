@@ -17,17 +17,14 @@ export default function Features() {
 
   const features = [
     {
-      icon: '⚡',
       title: 'Hot-Swappable PCB',
       description: 'Effortlessly swap switches in seconds without soldering. Customize your typing sound and feel to match your exact preference anytime.'
     },
     {
-      icon: '⚙️',
       title: 'Powered by ZMK',
       description: 'Industry-leading open source firmware. Remap keys, create complex macros, and define layers with ease. Your keyboard, your rules.'
     },
     {
-      icon: '🔌',
       title: 'Universal Connectivity',
       description: 'High-speed USB-C interface ensures low-latency performance and seamless compatibility across Mac, Windows, and Linux devices.'
     },
@@ -50,9 +47,7 @@ export default function Features() {
               className={`glass-card p-10 flex flex-col md:flex-row items-center gap-10 text-center md:text-left group hover:bg-white/5 transition-colors ${visible ? 'fade-in' : 'opacity-0'}`}
               style={{ animationDelay: `${0.1 + index * 0.1}s` }}
             >
-              <div className="shrink-0 w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform duration-300">
-                {feature.icon}
-              </div>
+        
               <div className="grow flex flex-col justify-center gap-2 w-full text-left">
                 <div>
                   <h3 className="text-2xl font-semibold text-white mb-3">{feature.title}</h3>

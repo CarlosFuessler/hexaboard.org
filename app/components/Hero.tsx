@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export default function Hero() {
   const [typedText, setTypedText] = useState('');
-  const codeText = 'keyboard.init()';
+  const codeText = 'powered by zmk';
 
   useEffect(() => {
     let index = 0;
@@ -23,7 +23,7 @@ export default function Hero() {
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
-        <p className="mono text-green-400 mb-6 fade-in">// next-gen input device</p>
+        <p className="mono text-green-400 mb-6 fade-in">// Your useful little companion</p>
         
         <h1 className="headline mb-8 fade-in" style={{ animationDelay: '0.1s' }}>
           Hexaboard
@@ -45,7 +45,7 @@ export default function Hero() {
         </div>
 
         <div className="flex gap-4 fade-in" style={{ animationDelay: '0.3s' }}>
-          <a href="#features" className="btn-primary">
+          <a href="#features" className="btn-secondary">
             Explore Features
           </a>
           <a href="#showcase" className="btn-secondary">

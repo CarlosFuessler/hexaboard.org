@@ -50,15 +50,15 @@ export default function Showcase() {
             {/* Control hints */}
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-none">
               <div className="glass-card px-3 py-2">
-                <p className="text-white/60 text-xs mono">🖱️ Drag to rotate</p>
+                <p className="text-white/60 text-xs mono">Drag to rotate</p>
               </div>
               <div className="glass-card px-3 py-2">
-                <p className="text-white/60 text-xs mono">🔍 Scroll to zoom</p>
+                <p className="text-white/60 text-xs mono">Scroll to zoom</p>
               </div>
             </div>
           </div>
           <p className="text-white/40 text-sm text-center mt-6 mono">
-            Interactive 3D Model • WebGL • Real-time Rendering
+            Interactive 3D Model • WebGL • Raylib
           </p>
         </div>
       </div>

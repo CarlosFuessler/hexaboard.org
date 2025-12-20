@@ -18,7 +18,7 @@ export default function MatrixBackground() {
 
     const chars = "01";
     const baseFont = 14; // CSS px (before DPR scaling)
-    const speed = 0.2; // rows per frame (slower)
+    const speed = 0.1; // rows per frame (slower)
     const overlayAlpha = 0.12; // darker look, faster fade
     const trailLength = 14; // slightly shorter visible line
     const glyphAlphaHead = 0.7; // dimmer head
@@ -27,25 +27,33 @@ export default function MatrixBackground() {
     let columns = 0;
     let drops: number[] = [];
 
-    function resize() {
-      if (!canvas || !ctx) return;
-      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+    columns = Math.floor(width / fontSize);
+    drops = Array.from({ length: columns }, () =>
+    Math.random() * (height / fontSize)
+);
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
-      ctx.scale(dpr, dpr);
+  function resize() {
+  if (!canvas || !ctx) return;
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
 
-      fontSize = baseFont; // keep visual size in CSS pixels
-      columns = Math.floor(width / fontSize);
-      drops = Array(columns).fill(1);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+  ctx.scale(dpr, dpr);
 
-      ctx.font = `${fontSize}px monospace`;
-    }
+  fontSize = baseFont; // keep visual size in CSS pixels
+  columns = Math.floor(width / fontSize);
+  // Ursprünglich: drops = Array(columns).fill(1);
+  drops = Array.from({ length: columns }, () =>
+    Math.random() * (height / fontSize)
+  );
+
+  ctx.font = `${fontSize}px monospace`;
+}
 
     function step() {
       if (!canvas || !ctx) return;
