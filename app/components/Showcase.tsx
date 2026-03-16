@@ -58,7 +58,7 @@ export default function Showcase() {
             </div>
           </div>
           <p className="text-white/40 text-sm text-center mt-6 mono">
-            Interactive 3D Model • WebGL • Raylib
+            Interactive 3D Model • WebGL • Three.js
           </p>
         </div>
       </div>
