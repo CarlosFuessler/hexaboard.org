@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useLoader } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, ContactShadows } from '@react-three/drei';
+import { OrbitControls, ContactShadows } from '@react-three/drei';
 import { Suspense } from 'react';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import * as THREE from 'three';

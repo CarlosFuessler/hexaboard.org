@@ -1,16 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 
-const KeyboardViewer = dynamic(() => import('./KeyboardViewer'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-black/40">
-      <div className="text-white/50 mono text-sm">Loading 3D Model...</div>
-    </div>
-  ),
-});
+const KeyboardViewer = lazy(() => import('./KeyboardViewer'));
 
 export default function Showcase() {
   const [visible, setVisible] = useState(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -38,7 +39,12 @@ export default function Header() {
         </div>
 
         <div>
-          In progress...
+          <Link
+            to="/flash"
+            className="inline-block bg-white/10 hover:bg-white/20 text-white/90 px-3 py-1 rounded-md text-sm transition-colors"
+          >
+            Studio (In progress)
+          </Link>
         </div>
       </nav>
     </header>
