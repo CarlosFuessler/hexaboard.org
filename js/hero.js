@@ -1,5 +1,5 @@
 const typedEl = document.getElementById('typed-text');
-if (!typedEl) throw new Error('Typed text element not found');
+if (!typedEl) return;
 
 const codeText = 'powered by zmk';
 let index = 0;

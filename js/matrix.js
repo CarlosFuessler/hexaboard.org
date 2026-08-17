@@ -1,7 +1,7 @@
 const canvas = document.getElementById('matrix-bg');
-if (!canvas) throw new Error('Matrix canvas not found');
+if (!canvas) return;
 const ctx = canvas.getContext('2d');
-if (!ctx) throw new Error('Could not get 2D context');
+if (!ctx) return;
 
 const chars = '01';
 const baseFont = 14;
