@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hexaboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Matrix Rain Background -->
+  <canvas id="matrix-bg" class="fixed inset-0 z-0 pointer-events-none" aria-hidden="true"></canvas>
+
+  <!-- Header -->
+  <header id="header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent">
+    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl font-bold">Hexaboard</span>
+      </div>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#features" class="text-white/70 hover:text-white transition-colors text-sm">Features</a>
+        <a href="#showcase" class="text-white/70 hover:text-white transition-colors text-sm">3D View</a>
+        <a href="#specs" class="text-white/70 hover:text-white transition-colors text-sm">Specs</a>
+      </div>
+      <div>
+        <span class="inline-block bg-white/10 text-white/90 px-3 py-1 rounded-md text-sm opacity-50 cursor-not-allowed">Studio (Coming soon)</span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="relative z-10">
+    <!-- Hero Section -->
+    <section id="hero" class="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+      <div class="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
+        <p class="mono text-green-400 mb-6 fade-in">// Your useful little companion</p>
+        <h1 class="headline mb-8 fade-in" style="animation-delay: 0.1s">Hexaboard</h1>
+        <p class="subheadline mb-12 max-w-2xl fade-in" style="animation-delay: 0.2s">Your 2x3 Keyboard for Ultimate Productivity.</p>
+        <div class="mb-12 fade-in" style="animation-delay: 0.25s">
+          <div class="glass-card px-8 py-4 inline-block">
+            <code class="mono text-green-400 text-lg flex items-center gap-2">
+              <span class="text-green-500">&gt;</span>
+              <span id="typed-text"></span>
+              <span class="inline-block w-2 h-5 bg-green-400 animate-pulse ml-1"></span>
+            </code>
+          </div>
+        </div>
+        <div class="flex gap-4 fade-in" style="animation-delay: 0.3s">
+          <a href="#features" class="btn-secondary">Explore Features</a>
+          <a href="#showcase" class="btn-secondary">See It In 3D</a>
+          <a href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard" target="_blank" rel="noopener noreferrer" class="btn-secondary">GitHub →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-48 px-6 flex flex-col items-center relative overflow-hidden">
+      <div class="w-full max-w-4xl mx-auto flex flex-col items-center text-center">
+        <div class="w-full flex flex-col items-center text-center mb-24 reveal">
+          <p class="mono text-green-400 mb-6">// features</p>
+          <h2 class="section-title mb-6">Built for everyone.</h2>
+          <p class="subheadline max-w-xl mx-auto">Every detail engineered for the keyboard enthusiast.</p>
+        </div>
+        <div class="w-full flex flex-col gap-8">
+          <div class="glass-card p-10 flex flex-col md:flex-row items-center gap-10 text-center md:text-left group hover:bg-white/5 transition-colors reveal" style="animation-delay: 0.1s">
+            <div class="grow flex flex-col justify-center gap-2 w-full text-left">
+              <h3 class="text-2xl font-semibold text-white mb-3">Hot-Swappable PCB</h3>
+              <p class="text-white/60 leading-relaxed text-base max-w-2xl">Effortlessly swap switches in seconds without soldering. Customize your typing sound and feel to match your exact preference anytime.</p>
+            </div>
+          </div>
+          <div class="glass-card p-10 flex flex-col md:flex-row items-center gap-10 text-center md:text-left group hover:bg-white/5 transition-colors reveal" style="animation-delay: 0.2s">
+            <div class="grow flex flex-col justify-center gap-2 w-full text-left">
+              <h3 class="text-2xl font-semibold text-white mb-3">Powered by ZMK</h3>
+              <p class="text-white/60 leading-relaxed text-base max-w-2xl">Industry-leading open source firmware. Remap keys, create complex macros, and define layers with ease. Your keyboard, your rules.</p>
+            </div>
+          </div>
+          <div class="glass-card p-10 flex flex-col md:flex-row items-center gap-10 text-center md:text-left group hover:bg-white/5 transition-colors reveal" style="animation-delay: 0.3s">
+            <div class="grow flex flex-col justify-center gap-2 w-full text-left">
+              <h3 class="text-2xl font-semibold text-white mb-3">Universal Connectivity</h3>
+              <p class="text-white/60 leading-relaxed text-base max-w-2xl">High-speed USB-C interface ensures low-latency performance and seamless compatibility across Mac, Windows, and Linux devices.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Showcase / 3D Viewer Section -->
+    <section id="showcase" class="py-32 px-6 flex flex-col items-center relative">
+      <div class="w-full max-w-3xl mx-auto">
+        <div class="text-center mb-20 reveal">
+          <p class="mono text-green-400 mb-6">// 3d viewer</p>
+          <h2 class="section-title mb-6">See it from every angle.</h2>
+          <p class="subheadline max-w-2xl mx-auto">Drag to rotate. Scroll to zoom. Experience the precision of Hexaboard design.</p>
+        </div>
+        <div class="glass-card p-4 md:p-8 reveal" style="animation-delay: 0.2s">
+          <div id="viewer-container" class="w-full aspect-square bg-gradient-to-b from-black/60 to-black/40 rounded-2xl overflow-hidden border border-green-500/20 relative">
+            <div id="viewer-loading" class="w-full h-full flex flex-col items-center justify-center text-white/50">
+              <div class="w-12 h-12 border-2 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p class="mono text-sm">Loading 3D Model...</p>
+            </div>
+          </div>
+          <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-none" style="display:none" id="viewer-hints">
+            <div class="glass-card px-3 py-2">
+              <p class="text-white/60 text-xs mono">Drag to rotate</p>
+            </div>
+            <div class="glass-card px-3 py-2">
+              <p class="text-white/60 text-xs mono">Scroll to zoom</p>
+            </div>
+          </div>
+          <p class="text-white/40 text-sm text-center mt-6 mono">Interactive 3D Model • WebGL • Three.js</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Specs Section -->
+    <section id="specs" class="py-48 px-6 flex flex-col items-center">
+      <div class="w-full max-w-4xl mx-auto">
+        <div class="text-center mb-16 reveal">
+          <p class="mono text-green-400 mb-6">// specifications</p>
+          <h2 class="section-title mb-6">Technical Details</h2>
+        </div>
+        <div class="glass-card p-12 reveal" style="animation-delay: 0.2s">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Layout</span>
+              <span class="text-white font-medium">Compact 2x3</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Switches</span>
+              <span class="text-white font-medium">Hot-Swappable</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Firmware</span>
+              <span class="text-white font-medium">ZMK (Open Source)</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Connectivity</span>
+              <span class="text-white font-medium">USB-C</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Material</span>
+              <span class="text-white font-medium">PLA</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Keycaps</span>
+              <span class="text-white font-medium">PBT Double-Shot</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Battery</span>
+              <span class="text-white font-medium">Rechargeable Lipo</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+              <span class="text-white/50 mono text-sm">Display</span>
+              <span class="text-white font-medium">OLED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-16 px-6 border-t border-white/10">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+        <div class="text-center md:text-left">
+          <h3 class="text-2xl font-bold mb-2">Hexaboard</h3>
+          <p class="text-white/50 text-sm">Your companion for everywhere.</p>
+        </div>
+        <div class="text-center">
+          <p class="text-white/30 text-sm mono">© 2025 Hexaboard. Designed with Love.</p>
+        </div>
+        <div class="flex gap-8">
+          <a href="#features" class="text-white/50 hover:text-white transition-colors text-sm">Features</a>
+          <a href="#showcase" class="text-white/50 hover:text-white transition-colors text-sm">3D View</a>
+          <a href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard" target="_blank" class="text-white/50 hover:text-white transition-colors text-sm">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="/js/matrix.js"></script>
+  <script type="module" src="/js/hero.js"></script>
+  <script type="module" src="/js/scroll-reveal.js"></script>
+  <script type="module" src="/js/viewer.js"></script>
+</body>
+</html>
