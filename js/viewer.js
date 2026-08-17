@@ -60,7 +60,7 @@ controls.target.set(0, -0.2, 0);
 // Load model
 const loader = new OBJLoader();
 loader.load(
-  '/Hexaboard_v3_Display.obj',
+  '/public/Hexaboard_v3_Display.obj',
   (obj) => {
     obj.traverse((child) => {
       if (child instanceof THREE.Mesh) {
