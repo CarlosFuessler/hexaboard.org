@@ -22,7 +22,7 @@ const features = [
 ];
 
 export default function FeaturesSection() {
-  useScrollReveal(".feature-card");
+  useScrollReveal(".reveal-item, .feature-card", 150);
 
   return (
     <section id="features" className="py-48 px-6 flex flex-col items-center relative overflow-hidden">

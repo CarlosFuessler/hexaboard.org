@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { animate } from "animejs";
 
-export function useScrollReveal(selector: string = ".reveal-item") {
+export function useScrollReveal(selector: string = ".reveal-item", stagger: number = 0) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -14,10 +14,12 @@ export function useScrollReveal(selector: string = ".reveal-item") {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            const index = parseInt(entry.target.getAttribute("data-reveal-index") || "0", 10);
             animate(entry.target, {
               opacity: [0, 1],
               translateY: [30, 0],
               duration: 800,
+              delay: index * stagger,
               ease: "outExpo",
             });
             observer.unobserve(entry.target);
@@ -27,13 +29,14 @@ export function useScrollReveal(selector: string = ".reveal-item") {
       { threshold: 0.1 }
     );
 
-    elements.forEach((el) => {
+    elements.forEach((el, index) => {
       (el as HTMLElement).style.opacity = "0";
+      el.setAttribute("data-reveal-index", String(index));
       observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [selector]);
+  }, [selector, stagger]);
 
   return containerRef;
 }
