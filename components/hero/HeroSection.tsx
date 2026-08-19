@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { animate, stagger } from "animejs";
 import TypingCard from "./TypingCard";
 import { animateButtonMagnetic, resetButtonMagnetic } from "@/lib/animations";
+import { GithubIcon } from "@/components/icons/GithubIcon";
 
 export default function HeroSection() {
   useEffect(() => {
@@ -92,11 +93,12 @@ export default function HeroSection() {
             href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard"
             target="_blank"
             rel="noopener noreferrer"
-            className="hero-cta btn-secondary opacity-0"
+            className="hero-cta btn-secondary opacity-0 flex items-center gap-2"
             onMouseMove={(e) => animateButtonMagnetic(e.currentTarget, e, 0.25)}
             onMouseLeave={(e) => resetButtonMagnetic(e.currentTarget)}
           >
-            GitHub →
+            <GithubIcon className="w-4 h-4 text-white" />
+            <span>GitHub →</span>
           </a>
         </div>
       </div>

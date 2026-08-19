@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { animate, stagger } from "animejs";
+import { GithubIcon } from "@/components/icons/GithubIcon";
 
 export default function Footer() {
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function Footer() {
               © 2026 Hexaboard. Designed with Love.
             </p>
           </div>
-          <div className="flex gap-8">
+          <div className="flex items-center gap-8">
             <a
               href="#features"
               className="footer-link text-white/50 hover:text-white transition-colors text-sm opacity-0"
@@ -44,9 +45,10 @@ export default function Footer() {
               href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard"
               target="_blank"
               rel="noopener noreferrer"
-              className="footer-link text-white/50 hover:text-white transition-colors text-sm opacity-0"
+              className="footer-link text-white/50 hover:text-white transition-colors text-sm opacity-0 flex items-center gap-1.5"
             >
-              GitHub
+              <GithubIcon className="w-4 h-4" />
+              <span>GitHub</span>
             </a>
           </div>
         </div>

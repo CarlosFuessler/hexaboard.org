@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { animate, stagger } from "animejs";
 import { Menu, X } from "lucide-react";
+import { GithubIcon } from "@/components/icons/GithubIcon";
 
 export default function Header() {
   const headerRef = useRef<HTMLElement>(null);
@@ -71,7 +72,16 @@ export default function Header() {
         </div>
 
         {/* Action */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
+          <a
+            href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1 rounded-md text-sm text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+          >
+            <GithubIcon className="w-4 h-4 text-white" />
+            <span>GitHub</span>
+          </a>
           <span className="inline-block bg-white/10 text-white/90 px-3 py-1 rounded-md text-sm opacity-50 cursor-not-allowed">
             Studio (Coming soon)
           </span>
@@ -110,6 +120,15 @@ export default function Header() {
             className="text-white/80 hover:text-white py-2 text-sm"
           >
             Specs
+          </a>
+          <a
+            href="https://github.com/siliconsniffer/zmk-keyboard-hexaboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-white/80 hover:text-white py-2 text-sm border-t border-white/10 pt-3"
+          >
+            <GithubIcon className="w-4 h-4" />
+            <span>GitHub Repository</span>
           </a>
         </div>
       )}
