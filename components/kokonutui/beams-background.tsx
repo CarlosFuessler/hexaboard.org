@@ -33,10 +33,16 @@ interface Beam {
   pulseSpeed: number;
 }
 
-function createBeam(width: number, height: number, isDarkMode: boolean): Beam {
+const opacityMap = {
+  subtle: 0.7,
+  medium: 0.85,
+  strong: 1,
+};
+
+function createBeam(width: number, height: number): Beam {
   const angle = -35 + Math.random() * 10;
-  const hueBase = isDarkMode ? 190 : 210;
-  const hueRange = isDarkMode ? 70 : 50;
+  const hueBase = 145;
+  const hueRange = 35;
 
   return {
     x: Math.random() * width * 1.5 - width * 0.25,
@@ -55,18 +61,13 @@ function createBeam(width: number, height: number, isDarkMode: boolean): Beam {
 export default function BeamsBackground({
   className,
   intensity = "strong",
+  children,
 }: AnimatedGradientBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const beamsRef = useRef<Beam[]>([]);
   const animationFrameRef = useRef<number>(0);
   const MINIMUM_BEAMS = 20;
   const isDarkModeRef = useRef<boolean>(false);
-
-  const opacityMap = {
-    subtle: 0.7,
-    medium: 0.85,
-    strong: 1,
-  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -99,7 +100,7 @@ export default function BeamsBackground({
 
       const totalBeams = MINIMUM_BEAMS * 1.5;
       beamsRef.current = Array.from({ length: totalBeams }, () =>
-        createBeam(canvas.width, canvas.height, isDarkModeRef.current)
+        createBeam(canvas.width, canvas.height)
       );
     };
 
@@ -112,8 +113,8 @@ export default function BeamsBackground({
       const column = index % 3;
       const spacing = canvas.width / 3;
 
-      const hueBase = isDarkModeRef.current ? 190 : 210;
-      const hueRange = isDarkModeRef.current ? 70 : 50;
+      const hueBase = 145;
+      const hueRange = 35;
 
       beam.y = canvas.height + 100;
       beam.x =
@@ -210,23 +211,23 @@ export default function BeamsBackground({
   return (
     <div
       className={cn(
-        "relative min-h-screen w-full overflow-hidden bg-neutral-100 dark:bg-neutral-950",
+        "relative min-h-screen w-full overflow-hidden bg-black",
         className
       )}
     >
       <canvas
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         ref={canvasRef}
-        style={{ filter: "blur(15px)" }}
+        style={{ filter: "blur(20px)" }}
       />
 
       <motion.div
         animate={{
-          opacity: [0.05, 0.15, 0.05],
+          opacity: [0.03, 0.08, 0.03],
         }}
-        className="absolute inset-0 bg-neutral-900/5 dark:bg-neutral-950/5"
+        className="absolute inset-0 bg-emerald-950/10 pointer-events-none"
         style={{
-          backdropFilter: "blur(50px)",
+          backdropFilter: "blur(40px)",
         }}
         transition={{
           duration: 10,
@@ -235,20 +236,9 @@ export default function BeamsBackground({
         }}
       />
 
-      <div className="relative z-10 flex h-screen w-full items-center justify-center">
-        <div className="flex flex-col items-center justify-center gap-6 px-4 text-center">
-          <motion.h1
-            animate={{ opacity: 1, y: 0 }}
-            className="font-semibold text-6xl text-neutral-900 tracking-tighter md:text-7xl lg:text-8xl dark:text-white"
-            initial={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.8 }}
-          >
-            Beams
-            <br />
-            Background
-          </motion.h1>
-        </div>
-      </div>
+      {children ? (
+        <div className="relative z-10 w-full h-full">{children}</div>
+      ) : null}
     </div>
   );
 }

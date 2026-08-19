@@ -346,19 +346,17 @@ export function NotificationCenter() {
     }
 
     const intervalId = setInterval(() => {
-      setCurrentTime((prev) =>
-        prev + 1 >= TOTAL_DURATION ? TOTAL_DURATION : prev + 1
-      );
+      setCurrentTime((prev) => {
+        if (prev + 1 >= TOTAL_DURATION) {
+          setIsPlaying(false);
+          return TOTAL_DURATION;
+        }
+        return prev + 1;
+      });
     }, TIMER_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
   }, [isPlaying, isVisible]);
-
-  React.useEffect(() => {
-    if (currentTime >= TOTAL_DURATION) {
-      setIsPlaying(false);
-    }
-  }, [currentTime]);
 
   const handlePlayPause = () => {
     setIsPlaying((prev) => !prev);
