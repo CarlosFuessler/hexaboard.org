@@ -211,7 +211,7 @@ export default function BeamsBackground({
   return (
     <div
       className={cn(
-        "relative min-h-screen w-full overflow-hidden bg-black",
+        "relative min-h-screen w-full overflow-hidden bg-transparent pointer-events-none",
         className
       )}
     >
