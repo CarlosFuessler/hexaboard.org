@@ -2,17 +2,9 @@
 
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { animateCardTilt, resetCardTilt } from "@/lib/animations";
+import { siteContent } from "@/lib/content";
 
-const specs = [
-  { label: "Layout", value: "Compact 2x3" },
-  { label: "Switches", value: "Hot-Swappable" },
-  { label: "Firmware", value: "ZMK (Open Source)" },
-  { label: "Connectivity", value: "USB-C" },
-  { label: "Material", value: "PLA" },
-  { label: "Keycaps", value: "PBT Double-Shot" },
-  { label: "Battery", value: "Rechargeable Lipo" },
-  { label: "Display", value: "OLED" },
-];
+const specs = siteContent.specs;
 
 export default function SpecsSection() {
   useScrollReveal(".spec-card", { stagger: 100, distance: 30 });

@@ -2,13 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { animate } from "animejs";
+import { siteContent } from "@/lib/content";
 
 export default function TypingCard() {
   const typedRef = useRef<HTMLSpanElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const text = "powered by zmk";
+    const text = siteContent.hero.typingLines[0];
     let index = 0;
 
     const interval = setInterval(() => {

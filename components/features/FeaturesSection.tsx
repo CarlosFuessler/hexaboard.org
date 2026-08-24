@@ -3,27 +3,16 @@
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { Zap, Cpu, Wifi } from "lucide-react";
 import { animateCardTilt, resetCardTilt } from "@/lib/animations";
+import { siteContent } from "@/lib/content";
+import type { FeatureIcon } from "@/lib/content";
 
-const features = [
-  {
-    icon: Zap,
-    title: "Hot-Swappable PCB",
-    description:
-      "Effortlessly swap switches in seconds without soldering. Customize your typing sound and feel to match your exact preference anytime.",
-  },
-  {
-    icon: Cpu,
-    title: "Powered by ZMK",
-    description:
-      "Industry-leading open source firmware. Remap keys, create complex macros, and define layers with ease. Your keyboard, your rules.",
-  },
-  {
-    icon: Wifi,
-    title: "Universal Connectivity",
-    description:
-      "High-speed USB-C interface ensures low-latency performance and seamless compatibility across Mac, Windows, and Linux devices.",
-  },
-];
+const iconMap: Record<FeatureIcon, typeof Zap> = {
+  zap: Zap,
+  cpu: Cpu,
+  wifi: Wifi,
+};
+
+const features = siteContent.features;
 
 export default function FeaturesSection() {
   useScrollReveal(".feature-item, .feature-card", { stagger: 120, distance: 30 });
@@ -43,7 +32,7 @@ export default function FeaturesSection() {
         {/* Feature Cards */}
         <div className="w-full flex flex-col gap-8">
           {features.map((feature) => {
-            const Icon = feature.icon;
+            const Icon = iconMap[feature.icon];
             return (
               <div
                 key={feature.title}

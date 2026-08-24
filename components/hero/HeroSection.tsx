@@ -5,6 +5,7 @@ import { animate, stagger } from "animejs";
 import TypingCard from "./TypingCard";
 import { animateButtonMagnetic, resetButtonMagnetic } from "@/lib/animations";
 import { GithubIcon } from "@/components/icons/GithubIcon";
+import { siteContent } from "@/lib/content";
 
 export default function HeroSection() {
   useEffect(() => {
@@ -57,15 +58,15 @@ export default function HeroSection() {
     >
       <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
         <p className="hero-tagline mono text-green-400 mb-6 opacity-0">
-          {"// Your useful little companion"}
+          {siteContent.hero.eyebrow}
         </p>
 
         <h1 className="hero-title headline mb-8 opacity-0">
-          Hexaboard
+          {siteContent.hero.title}
         </h1>
 
         <p className="hero-subtitle subheadline mb-12 max-w-2xl mx-auto opacity-0">
-          Your 2x3 Keyboard for Ultimate Productivity.
+          {siteContent.hero.tagline}
         </p>
 
         <div className="hero-card mb-12 opacity-0">
