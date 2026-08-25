@@ -1,10 +1,13 @@
-// Command render-tui bakes the pre-rendered ANSI frame bundle served by
+// Command render-tui bakes the pre-rendered ANSI frame bundles served by
 // the website's /tui streaming endpoint.
 //
 // Usage:
 //
-//	go run ./cmd/render-tui -out ../public/tui-frames.bin \
+//	go run ./cmd/render-tui [-dir ../public] \
 //	    [-cloud model.bin | -obj model.obj] [-api https://hexaboard.org/api/tui]
+//
+// It writes one bundle per terminal size: tui-s.bin, tui-m.bin,
+// tui-l.bin and tui-xl.bin.
 package main
 
 import (
@@ -23,14 +26,27 @@ import (
 	"hexaboard.org/tui/internal/streamrender"
 )
 
-const sampleCount = 20000
+const (
+	sampleCount = 20000
+	steps       = 72
+	bootFrames  = 45
+)
+
+var sizes = []struct {
+	name string
+	l    streamrender.Layout
+}{
+	{"s", streamrender.Layout{W: 80, H: 24}},
+	{"m", streamrender.Layout{W: 110, H: 32}},
+	{"l", streamrender.Layout{W: 150, H: 42}},
+	{"xl", streamrender.Layout{W: 200, H: 56}},
+}
 
 func main() {
-	out := flag.String("out", filepath.Join("..", "public", "tui-frames.bin"), "output bundle path")
+	dir := flag.String("dir", filepath.Join("..", "public"), "output directory")
 	cloudPath := flag.String("cloud", defaultCloud(), "cached point cloud path")
 	objPath := flag.String("obj", "", "OBJ file to sample directly (overrides -cloud)")
 	apiURL := flag.String("api", "https://hexaboard.org/api/tui", "content API URL")
-	steps := flag.Int("steps", 72, "rotation frames per loop")
 	flag.Parse()
 
 	points, err := loadPoints(*objPath, *cloudPath)
@@ -41,70 +57,83 @@ func main() {
 	fatalIf(err)
 	fmt.Println("fetched site content")
 
-	var frames []bundle.Frame
 	rng := rand.New(rand.NewSource(42))
-	frames = append(frames, streamrender.BootFrames(45, rng)...)
-	frames = append(frames, buildCycle(c, points, *steps)...)
+	for _, sz := range sizes {
+		var frames []bundle.Frame
+		frames = append(frames, streamrender.BootFrames(sz.l, bootFrames, rng)...)
+		frames = append(frames, buildCycle(sz.l, c, points)...)
 
-	if err := bundle.Write(*out, frames); err != nil {
-		fatalIf(err)
+		out := filepath.Join(*dir, fmt.Sprintf("tui-%s.bin", sz.name))
+		if err := bundle.Write(out, frames, bootFrames); err != nil {
+			fatalIf(err)
+		}
+		total := 0
+		for _, f := range frames {
+			total += len(f.Body)
+		}
+		fmt.Printf("wrote %s (%dx%d): %d frames, %.1f KB\n",
+			out, sz.l.W, sz.l.H, len(frames), float64(total)/1024)
 	}
-	total := 0
-	for _, f := range frames {
-		total += len(f.Body)
-	}
-	fmt.Printf("wrote %s: %d frames, %.1f KB\n", *out, len(frames), float64(total)/1024)
 }
 
 // buildCycle assembles the endlessly repeating sequence:
-// rotation → hero → rotation → features → rotation → specs.
-func buildCycle(c content.Content, points []model3d.Point, steps int) []bundle.Frame {
-	rot, err := streamrender.RotationFrames(points, steps)
+// hero → rotation → features → rotation → specs → rotation.
+func buildCycle(l streamrender.Layout, c content.Content, points []model3d.Point) []bundle.Frame {
+	rot, err := streamrender.RotationFrames(l, points, steps)
 	fatalIf(err)
 
 	var cycle []bundle.Frame
-	cycle = append(cycle, heroCard(c))
+	cycle = append(cycle, heroCard(l, c))
 	cycle = append(cycle, rot...)
-	cycle = append(cycle, featuresCard(c))
+	cycle = append(cycle, featuresCard(l, c))
 	cycle = append(cycle, rot...)
-	cycle = append(cycle, specsCard(c))
+	cycle = append(cycle, specsCard(l, c))
 	cycle = append(cycle, rot...)
 	return cycle
 }
 
-func heroCard(c content.Content) bundle.Frame {
-	rows := [][2]string{
-		{"", "\x1b[38;5;47m" + c.Hero.Title + "\x1b[0m"},
-		{"", c.Hero.Tagline},
-		{"", ""},
+func heroCard(l streamrender.Layout, c content.Content) bundle.Frame {
+	rows := []streamrender.CardRow{
+		{Value: c.Hero.Title},
+		{Value: c.Hero.Tagline},
+		{},
 	}
-	for _, l := range c.Hero.TypingLines {
-		rows = append(rows, [2]string{"$ ", l})
+	for _, t := range c.Hero.TypingLines {
+		rows = append(rows, streamrender.CardRow{Label: "$", Value: t})
 	}
+	rows = append(rows, streamrender.CardRow{})
 	for _, l := range c.Links {
-		rows = append(rows, [2]string{"→ ", l.Label + ": " + l.URL})
+		rows = append(rows, streamrender.CardRow{Label: "→", Value: l.Label + ": " + l.URL})
 	}
-	return streamrender.CardFrame(c.Hero.Eyebrow, rows, "press ctrl-c to exit")
+	return streamrender.CardFrame(l, c.Hero.Eyebrow, rows, "ctrl-c exits", 4000)
 }
 
-func featuresCard(c content.Content) bundle.Frame {
-	rows := [][2]string{}
+func featuresCard(l streamrender.Layout, c content.Content) bundle.Frame {
+	var rows []streamrender.CardRow
 	for _, f := range c.Features {
-		rows = append(rows, [2]string{"\x1b[38;5;47m" + f.Title + "\x1b[0m", ""})
+		rows = append(rows, streamrender.CardRow{Value: f.Title})
 		for _, line := range wrap(f.Description, 58) {
-			rows = append(rows, [2]string{"", line})
+			rows = append(rows, streamrender.CardRow{Value: line, Dim: true})
 		}
-		rows = append(rows, [2]string{"", ""})
+		rows = append(rows, streamrender.CardRow{})
 	}
-	return streamrender.CardFrame("// features", rows, "built for everyone")
+	return streamrender.CardFrame(l, "// features", rows, "built for everyone", 4500)
 }
 
-func specsCard(c content.Content) bundle.Frame {
-	rows := make([][2]string, 0, len(c.Specs))
+func specsCard(l streamrender.Layout, c content.Content) bundle.Frame {
+	rows := make([]streamrender.CardRow, 0, len(c.Specs))
 	for _, s := range c.Specs {
-		rows = append(rows, [2]string{s.Label, s.Value})
+		rows = append(rows, streamrender.CardRow{Label: s.Label, Value: s.Value})
 	}
-	return streamrender.CardFrame("// specifications", rows, "technical details")
+	return streamrender.CardFrame(l, "// specifications", rows, "technical details", 4500)
+}
+
+func defaultCloud() string {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return "model.bin"
+	}
+	return filepath.Join(base, "hexaboard", "model.bin")
 }
 
 func loadPoints(objPath, cloudPath string) ([]model3d.Point, error) {
@@ -156,14 +185,6 @@ func wrap(text string, n int) []string {
 		lines = append(lines, line)
 	}
 	return lines
-}
-
-func defaultCloud() string {
-	base, err := os.UserCacheDir()
-	if err != nil {
-		return "model.bin"
-	}
-	return filepath.Join(base, "hexaboard", "model.bin")
 }
 
 func fatalIf(err error) {

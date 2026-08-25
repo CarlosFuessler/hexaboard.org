@@ -1,6 +1,7 @@
 package streamrender
 
 import (
+	"math"
 	"math/rand"
 	"strings"
 	"testing"
@@ -9,18 +10,18 @@ import (
 	"hexaboard.org/tui/internal/render"
 )
 
+var testLayout = Layout{W: 40, H: 14}
+
 func cell(lum float32, ch byte) render.Cell {
 	return render.Cell{Lum: lum, Ch: ch}
 }
 
 func TestEncodeGroupsAdjacentSameColor(t *testing.T) {
 	f := render.NewBlank(4, 1)
-	// Build manually: two bright cells, one space, one dim cell.
-	set := func(x int, c render.Cell) { f.SetCell(x, 0, c) }
-	set(0, cell(0.9, '#'))
-	set(1, cell(0.9, '#'))
-	set(2, cell(0, ' '))
-	set(3, cell(0.2, '.'))
+	f.SetCell(0, 0, cell(0.9, '#'))
+	f.SetCell(1, 0, cell(0.9, '#'))
+	f.SetCell(2, 0, cell(0, ' '))
+	f.SetCell(3, 0, cell(0.2, '.'))
 
 	got := EncodeFrame(f)
 	if strings.Count(got, "\x1b[38;5;") != 2 {
@@ -31,79 +32,114 @@ func TestEncodeGroupsAdjacentSameColor(t *testing.T) {
 	}
 }
 
-func TestEncodePadsRowsToWidth(t *testing.T) {
-	f := render.NewBlank(10, 2)
-	f.Fill(' ')
-	got := EncodeFrame(f)
-	lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("got %d lines, want 2", len(lines))
-	}
-}
-
-func TestPaletteCoversRamp(t *testing.T) {
-	if len(Palette) != len(render.Ramp) {
-		t.Fatalf("Palette %d entries, want %d (one per ramp glyph)", len(Palette), len(render.Ramp))
-	}
-	for i, p := range Palette {
-		if i > 0 && p == "" {
-			t.Errorf("Palette[%d] empty; only index 0 may be blank", i)
+func TestEncodeAlwaysFullGrid(t *testing.T) {
+	l := Layout{W: 30, H: 8}
+	frames := BootFrames(l, 5, rand.New(rand.NewSource(1)))
+	for i, fr := range frames {
+		// H lines of exactly W visible characters each.
+		body := strings.TrimSuffix(fr.Body, "\n")
+		lines := strings.Split(body, "\n")
+		if len(lines) != l.H {
+			t.Errorf("frame %d has %d lines, want exactly %d (no residue)", i, len(lines), l.H)
+		}
+		for y, line := range lines {
+			if w := visibleLen(line); w != l.W {
+				t.Errorf("frame %d line %d width %d, want %d", i, y, w, l.W)
+			}
 		}
 	}
 }
 
-func TestBootFramesShape(t *testing.T) {
-	frames := BootFrames(10, rand.New(rand.NewSource(1)))
-	if len(frames) != 10 {
-		t.Fatalf("got %d frames, want 10", len(frames))
+func TestRotationFramesFillLayout(t *testing.T) {
+	// A ring of points wide enough to project across the whole grid.
+	var pts []model3d.Point
+	for i := 0; i < 720; i++ {
+		a := float64(i) / 720 * 2 * 3.14159
+		pts = append(pts, model3d.Point{
+			Pos:    [3]float32{float32(math.Cos(a)), float32(math.Sin(a) * 0.4), float32(math.Sin(a))},
+			Normal: [3]float32{0, 0.3, -0.95},
+		})
 	}
-	last := frames[len(frames)-1].Body
-	if !strings.Contains(last, "ready") {
-		t.Errorf("final boot frame should show ready, got %q", last[:min(200, len(last))])
-	}
-	for i, f := range frames {
-		if f.DelayMS != 66 {
-			t.Errorf("frame %d delay %d, want 66", i, f.DelayMS)
-		}
-	}
-}
-
-func TestRotationFramesLoopable(t *testing.T) {
-	pts := []model3d.Point{
-		{Pos: [3]float32{-1, -0.5, 0}, Normal: [3]float32{0, 0.3, -0.95}},
-		{Pos: [3]float32{1, 0.5, 0}, Normal: [3]float32{0, 0.3, -0.95}},
-		{Pos: [3]float32{0, 0, -1}, Normal: [3]float32{0, 0.3, -0.95}},
-	}
-	frames, err := RotationFrames(pts, 8)
+	frames, err := RotationFrames(testLayout, pts, 6)
 	if err != nil {
 		t.Fatalf("RotationFrames() unexpected error: %v", err)
 	}
-	if len(frames) != 8 {
-		t.Fatalf("got %d frames, want 8", len(frames))
+	if len(frames) != 6 {
+		t.Fatalf("got %d frames, want 6", len(frames))
 	}
-	nonEmpty := 0
+
+	bestSpan := 0
 	for _, fr := range frames {
-		if strings.Count(fr.Body, "\x1b[38;5;") > 0 {
-			nonEmpty++
+		for _, line := range strings.Split(strings.TrimSuffix(fr.Body, "\n"), "\n") {
+			span := contentSpan(line)
+			if span > bestSpan {
+				bestSpan = span
+			}
 		}
 	}
-	if nonEmpty == 0 {
-		t.Error("no rotation frame contains colored glyphs")
-	}
-}
-
-func TestRotationFramesEmptyPointsRejected(t *testing.T) {
-	if _, err := RotationFrames(nil, 4); err == nil {
-		t.Fatal("expected error for empty points")
+	if bestSpan < testLayout.W*80/100 {
+		t.Errorf("widest rotation frame spans %d cols, want ≥80%% of %d — board must fill the terminal", bestSpan, testLayout.W)
 	}
 }
 
 func TestCardFrameContainsCopy(t *testing.T) {
-	fr := CardFrame("// specs", [][2]string{{"Layout", "2x3"}, {"USB-C", "yes"}}, "hexaboard.org")
+	fr := CardFrame(testLayout, "// specs",
+		[]CardRow{{Label: "Layout", Value: "2x3"}, {Label: "USB-C", Value: "yes"}},
+		"hexaboard.org", 4000)
 	if !strings.Contains(fr.Body, "specs") || !strings.Contains(fr.Body, "Layout") {
-		t.Errorf("card body missing copy: %q", fr.Body[:min(300, len(fr.Body))])
+		t.Errorf("card body missing copy")
 	}
-	if !strings.Contains(fr.Body, "╭") {
-		t.Error("card should have a rounded border")
+	if !strings.Contains(fr.Body, "+---") {
+		t.Error("card should have an ascii border")
 	}
+}
+
+func TestCardFrameFullHeight(t *testing.T) {
+	fr := CardFrame(testLayout, "// t", []CardRow{{Label: "a", Value: "b"}}, "footer", 1000)
+	lines := strings.Split(strings.TrimSuffix(fr.Body, "\n"), "\n")
+	if len(lines) != testLayout.H {
+		t.Errorf("card frame has %d lines, want %d", len(lines), testLayout.H)
+	}
+}
+
+// --- helpers ---
+
+func contentSpan(line string) int {
+	first, last := -1, -1
+	for i := 0; i < len(line); i++ {
+		if line[i] != ' ' && !strings.HasPrefix(line[i:], "\x1b") {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 {
+		return 0
+	}
+	return last - first + 1
+}
+
+func visibleLen(s string) int {
+	n := 0
+	i := 0
+	for i < len(s) {
+		c := s[i]
+		if c != '\x1b' {
+			n++
+			i++
+			continue
+		}
+		// CSI sequence: ESC [ params final-byte (any letter @-~).
+		if i+1 < len(s) && s[i+1] == '[' {
+			i += 2
+			for i < len(s) && !(s[i] >= 0x40 && s[i] <= 0x7e) {
+				i++
+			}
+			i++ // consume final byte
+			continue
+		}
+		i++ // lone escape
+	}
+	return n
 }

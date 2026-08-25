@@ -8,15 +8,22 @@ interface Frame {
   body: string;
 }
 
-const BOOT_FRAMES = 45; // played once; everything after loops forever
+interface Bundle {
+  frames: Frame[];
+  bootCount: number;
+}
 
-function decodeBundle(data: Buffer): Frame[] {
-  if (data.length < 9 || data.subarray(0, 5).toString("binary") !== "HXTF\u0001") {
+const SIZES = new Set(["s", "m", "l", "xl"]);
+const DEFAULT_SIZE = "m";
+
+function decodeBundle(data: Buffer): Bundle {
+  if (data.length < 13 || data.subarray(0, 5).toString("binary") !== "HXT\u0002\u0001") {
     throw new Error("tui bundle: bad magic");
   }
-  const count = data.readUInt32LE(5);
+  const bootCount = data.readUInt32LE(5);
+  const count = data.readUInt32LE(9);
   const frames: Frame[] = [];
-  let pos = 9;
+  let pos = 13;
   for (let i = 0; i < count; i++) {
     const delayMS = data.readUInt32LE(pos);
     const size = data.readUInt32LE(pos + 4);
@@ -24,14 +31,19 @@ function decodeBundle(data: Buffer): Frame[] {
     frames.push({ delayMS, body: data.toString("utf8", pos, pos + size) });
     pos += size;
   }
-  return frames;
+  return { frames, bootCount };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function GET(req: Request): Promise<Response> {
-  const data = await readFile(path.join(process.cwd(), "public", "tui-frames.bin"));
-  const frames = decodeBundle(data);
+  const url = new URL(req.url);
+  const requested = (url.searchParams.get("size") ?? DEFAULT_SIZE).toLowerCase();
+  const size = SIZES.has(requested) ? requested : DEFAULT_SIZE;
+
+  const data = await readFile(path.join(process.cwd(), "public", `tui-${size}.bin`));
+  const { frames, bootCount } = decodeBundle(data);
+  const cycleLen = frames.length - bootCount;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -48,20 +60,21 @@ export async function GET(req: Request): Promise<Response> {
       push("\x1b[2J\x1b[?25l"); // clear screen, hide cursor
 
       try {
-        for (let i = 0; i < BOOT_FRAMES && open; i++) {
+        // Boot sequence plays once.
+        for (let i = 0; i < bootCount && open; i++) {
           push(frames[i].body);
           await sleep(frames[i].delayMS);
         }
-        const cycleLen = frames.length - BOOT_FRAMES;
+        // Then the main cycle loops forever.
         let i = 0;
         while (open && cycleLen > 0) {
-          const idx = BOOT_FRAMES + (i % cycleLen);
-          push(frames[idx].body);
-          await sleep(frames[idx].delayMS);
+          const frame = frames[bootCount + (i % cycleLen)];
+          push(frame.body);
+          await sleep(frame.delayMS);
           i++;
         }
       } catch {
-        // client disconnected mid-stream; nothing to clean up
+        // client disconnected mid-stream
       } finally {
         push("\x1b[?25h"); // restore cursor
         try {

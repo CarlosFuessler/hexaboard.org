@@ -14,24 +14,26 @@ import (
 	"hexaboard.org/tui/internal/render"
 )
 
-// Grid is the fixed frame size; curl terminals vary, so the layout is
-// self-contained.
-const (
-	GridW = 90
-	GridH = 26
-)
+// Layout is the fixed frame size of one bundle variant. Frames are
+// always exactly Layout.H rows tall so cursor-homed redraws never leave
+// residue, regardless of what was on screen before.
+type Layout struct {
+	W, H int
+}
 
 // Palette maps render.Ramp index → 256-color code ("" = default/plain).
 var Palette = []string{"", "22", "28", "34", "35", "41", "47", "48", "50", "158"}
 
+// asciiRain keeps every glyph single-byte: cells are byte-addressed, and
+// writing fragments of multibyte runes corrupts the frame.
+const asciiRain = "01<>=+-*:.#ABCDEFXYZ$%?"
+
 const logo = ` _  _ ____ _    ___  _  _ ___  ____ ____
  |__| |__| |    |__> |-:_ |__> |=== |___`
 
-const rainCharset = "ｦｧｨｩｪｫｬｭｮｯｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789"
-
 // EncodeFrame renders a Frame into a cursor-homed ANSI string. Every row
-// is padded to exactly GridW visible characters so redraws leave no
-// residue. Adjacent cells sharing a color are grouped into one escape run.
+// is padded to exactly f.W visible characters; the output always spans
+// exactly f.H lines.
 func EncodeFrame(f *render.Frame) string {
 	var b strings.Builder
 	b.WriteString("\x1b[H")
@@ -68,191 +70,229 @@ func EncodeFrame(f *render.Frame) string {
 			run.WriteByte(c.Ch)
 		}
 		flush()
-		b.WriteString("\x1b[0m")
-		_ = colored
-		b.WriteByte('\n')
+		if colored {
+			b.WriteString("\x1b[0m")
+		}
+		if y < f.H-1 {
+			b.WriteByte('\n')
+		}
 	}
 	return b.String()
 }
 
 // BootFrames bakes the intro: rain with the HEXABOARD logo fading in and
-// a status line that ends ready.
-func BootFrames(count int, rng *rand.Rand) []bundle.Frame {
-	drops := make([]int, GridW/2)
+// a status line that ends ready. The status row lives inside the grid,
+// on the last line.
+func BootFrames(l Layout, count int, rng *rand.Rand) []bundle.Frame {
+	drops := make([]int, l.W/2)
 	for i := range drops {
-		drops[i] = -(rng.Intn(GridH + 10))
+		drops[i] = -(rng.Intn(l.H + 10))
 	}
 
 	logoLines := strings.Split(logo, "\n")
+	logoTop := maxInt(3, l.H/2-6)
+
 	frames := make([]bundle.Frame, 0, count)
 	for t := 0; t < count; t++ {
-		advanceRain(drops, rng)
-		grid := rainGrid(drops, rng)
-		logoTop := 4
+		advanceRain(drops, l.H, rng)
+		grid := rainGrid(l, drops, rng)
+
 		if t >= count/4 {
 			for i, line := range logoLines {
-				overlayLine(grid, logoTop+i, (GridW-len(line))/2, line)
+				writeASCII(grid, logoTop+i, (l.W-len(line))/2, line, 0.9)
 			}
 		}
-		status := "loading content..."
-		if t >= count-6 {
-			status = "[ok] ready -- enjoy"
-		} else if t < count/4 {
-			status = "connecting..." //nolint:dupl
-		}
-		overlayLine(grid, GridH-4, (GridW-len(status))/2, status)
 
-		body := EncodeFrame(grid) +
-			fmt.Sprintf("\x1b[%d;1H\x1b[38;5;242mhexaboard.org · curl edition · ctrl-c exits\x1b[0m", GridH+1)
-		frames = append(frames, bundle.Frame{DelayMS: 66, Body: body})
+		status := "loading content..."
+		switch {
+		case t >= count-6:
+			status = "[ok] ready -- enjoy"
+		case t < count/4:
+			status = "connecting..."
+		}
+		hint := fmt.Sprintf("hexaboard.org · curl edition · ctrl-c exits · size wrong? reload /tui?size=xl")
+		writeASCIIDim(grid, l.H-1, 2, status)
+		writeASCIIDimRight(grid, l.H-1, hint)
+
+		frames = append(frames, bundle.Frame{DelayMS: 66, Body: EncodeFrame(grid)})
 	}
 	return frames
 }
 
 // RotationFrames bakes one seamless loop of the point cloud spinning
-// around its vertical axis.
-func RotationFrames(points []model3d.Point, steps int) ([]bundle.Frame, error) {
+// around its vertical axis. The cloud is scaled per-layout so its
+// projection fills ~92% of the width and ~85% of the body height. The
+// bottom two rows carry an integrated dim status line, keeping frames
+// full-height.
+func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame, error) {
 	if len(points) == 0 {
 		return nil, fmt.Errorf("streamrender: no points to rotate")
 	}
-	scaleToFit(points, 7.0, 5.0)
+
+	const dist = 8.0
+	bodyRows := l.H - 2 // last two rows reserved for status
+	scaleY := float64(bodyRows) / (2 * math.Tan((math.Pi/4)/2))
+	aspect := 2.0
+
+	// World-space radii that project onto the target fractions.
+	targetHalfW := (float64(l.W) / 2) * 0.92
+	wantRX := targetHalfW * dist / (scaleY * aspect)
+	targetHalfH := (float64(bodyRows) / 2) * 0.85
+	wantRY := targetHalfH * dist / scaleY
+
+	scaleToFit(points, wantRX, wantRY)
 
 	frames := make([]bundle.Frame, 0, steps)
 	for s := 0; s < steps; s++ {
 		yaw := 2 * math.Pi * float64(s) / float64(steps)
 		f := render.Render(points, render.Params{
-			Width:    GridW,
-			Height:   GridH - 3,
+			Width:    l.W,
+			Height:   bodyRows,
 			Yaw:      yaw,
-			Distance: 8,
+			Distance: dist,
 		})
-		body := EncodeFrame(f) +
-			fmt.Sprintf("\x1b[%d;1H\x1b[38;5;242mrotating · hexaboard v3 · space would pause if this were interactive\x1b[0m", GridH+1)
-		frames = append(frames, bundle.Frame{DelayMS: 50, Body: body})
+		full := render.NewBlank(l.W, l.H)
+		blit(f, full, 0, 0)
+		writeASCIIDim(full, l.H-2, 2, "rotating · hexaboard v3 display")
+		writeASCIIDimRight(full, l.H-2, "ctrl-c exits")
+		writeASCIIDimRight(full, l.H-1, "size wrong? reload /tui?size=xl")
+		frames = append(frames, bundle.Frame{DelayMS: 50, Body: EncodeFrame(full)})
 	}
 	return frames, nil
 }
 
-// CardFrame bakes a static info card centered on the grid.
-func CardFrame(title string, rows [][2]string, footer string) bundle.Frame {
-	f := render.NewBlank(GridW, GridH)
+// CardRow is one line inside an info card.
+type CardRow struct {
+	Label string // right-padded dim column (may be empty)
+	Value string // main text
+	Dim   bool   // render dimmer than normal values
+}
 
-	inner := make([]string, 0, len(rows)+2)
-	inner = append(inner, "\x1b[38;5;47m"+title+"\x1b[0m", "")
+// CardFrame bakes a static info card centered on the grid. The card is
+// drawn full-height (border box vertically centered, status footer on
+// the last row) so it can cleanly replace rotation frames.
+func CardFrame(l Layout, title string, rows []CardRow, footer string, delayMS uint32) bundle.Frame {
+	f := render.NewBlank(l.W, l.H)
+
+	type line struct {
+		text string
+		lum  float32
+	}
+	var inner []line
+	addLine := func(text string, lum float32) { inner = append(inner, line{text, lum}) }
+
+	addLine(title, 0.95)
+	addLine("", 0)
 	for _, r := range rows {
-		line := "\x1b[38;5;242m" + padTo(r[0], 16) + "\x1b[0m" + r[1]
-		inner = append(inner, line)
+		lum := float32(0.75)
+		if r.Dim {
+			lum = 0.45
+		}
+		text := r.Value
+		if r.Label != "" {
+			text = padTo(r.Label, 16) + text
+		}
+		addLine(text, lum)
 	}
 
 	boxW := 0
-	for _, l := range inner {
-		if w := visibleLen(l); w > boxW {
+	for _, ln := range inner {
+		if w := len(ln.text); w > boxW {
 			boxW = w
 		}
 	}
-	boxW += 4 // padding
-	top := "╭" + strings.Repeat("─", boxW) + "╮"
-	bot := "╰" + strings.Repeat("─", boxW) + "╯"
+	boxW += 4
+	boxH := len(inner) + 2
+	topY := maxInt(2, (l.H-2-boxH)/2)
 
-	topY := 5
-	putCentered(f, topY, top)
-	for i, l := range inner {
-		pad := boxW - 2 - visibleLen(l)
-		line := "│ " + l + strings.Repeat(" ", maxInt(pad, 0)) + " │"
-		putCentered(f, topY+1+i, line)
+	top := "+" + strings.Repeat("-", boxW) + "+"
+	bottom := "+" + strings.Repeat("-", boxW) + "+"
+
+	writeASCIIBright(f, topY, (l.W-boxW-2)/2, top)
+	for i, ln := range inner {
+		pad := boxW - 2 - len(ln.text)
+		text := "| " + ln.text + strings.Repeat(" ", maxInt(pad, 0)) + " |"
+		writeASCIILum(f, topY+1+i, (l.W-boxW-2)/2, text, ln.lum)
 	}
-	putCentered(f, topY+1+len(inner), bot)
-	putCenteredANSI(f, GridH-2, footer)
+	writeASCIIBright(f, topY+boxH-1, (l.W-boxW-2)/2, bottom)
 
-	return bundle.Frame{DelayMS: 4000, Body: EncodeFrame(f)}
+	writeASCIIDim(f, l.H-1, 2, footer)
+	writeASCIIDimRight(f, l.H-1, "hexaboard.org")
+
+	return bundle.Frame{DelayMS: delayMS, Body: EncodeFrame(f)}
 }
 
 // --- helpers ---
 
-func advanceRain(drops []int, rng *rand.Rand) {
+func blit(src, dst *render.Frame, dx, dy int) {
+	for y := 0; y < src.H; y++ {
+		for x := 0; x < src.W; x++ {
+			dst.SetCell(dx+x, dy+y, src.CellAt(x, y))
+		}
+	}
+}
+
+func advanceRain(drops []int, maxH int, rng *rand.Rand) {
 	for i := range drops {
 		drops[i]++
-		if drops[i] > GridH+8 {
+		if drops[i] > maxH+8 {
 			drops[i] = -rng.Intn(20)
 		}
 	}
 }
 
-func rainGrid(drops []int, rng *rand.Rand) *render.Frame {
-	f := render.NewBlank(GridW, GridH)
+func rainGrid(l Layout, drops []int, rng *rand.Rand) *render.Frame {
+	f := render.NewBlank(l.W, l.H)
 	const trail = 10
 	for col, head := range drops {
 		x := col * 2
 		for t := 0; t < trail; t++ {
 			y := head - t
-			if y < 0 || y >= GridH || x >= GridW {
+			if y < 0 || y >= l.H || x >= l.W {
 				continue
 			}
 			lum := 0.85 - float32(t)*0.08
 			if lum < 0.15 {
 				lum = 0.15
 			}
-			ch := rainCharset[rng.Intn(len(rainCharset))]
-			f.SetCell(x, y, render.Cell{Ch: byte(ch), Lum: lum})
+			ch := asciiRain[rng.Intn(len(asciiRain))]
+			f.SetCell(x, y, render.Cell{Ch: ch, Lum: lum})
 		}
 	}
 	return f
 }
 
-func overlayLine(f *render.Frame, y int, x int, text string) {
+func writeASCII(f *render.Frame, y, x int, text string, lum float32) {
+	writeASCIILum(f, y, x, text, lum)
+}
+
+func writeASCIIBright(f *render.Frame, y, x int, text string) {
+	writeASCIILum(f, y, x, text, 0.95)
+}
+
+func writeASCIIDim(f *render.Frame, y, x int, text string) {
+	writeASCIILum(f, y, x, text, 0.35)
+}
+
+func writeASCIILum(f *render.Frame, y, x int, text string, lum float32) {
 	for i := 0; i < len(text); i++ {
-		if x+i < 0 || x+i >= GridW || y < 0 || y >= GridH {
+		if x+i < 0 || x+i >= f.W || y < 0 || y >= f.H {
 			continue
 		}
-		f.SetCell(x+i, y, render.Cell{Ch: text[i], Lum: 0.9})
+		if text[i] != ' ' || lum == 0 {
+			f.SetCell(x+i, y, render.Cell{Ch: text[i], Lum: lum})
+		}
 	}
 }
 
-func putCentered(f *render.Frame, y int, ansiLine string) {
-	putCenteredAt(f, y, ansiLine, false)
+func writeASCIIDimRight(f *render.Frame, y int, text string) {
+	x := f.W - len(text) - 2
+	writeASCIILum(f, y, x, text, 0.35)
 }
 
-func putCenteredANSI(f *render.Frame, y int, text string) {
-	putCenteredAt(f, y, "\x1b[38;5;242m"+text+"\x1b[0m", true)
-}
-
-// putCenteredAt writes a possibly ANSI-styled line starting at column
-// (GridW-visibleWidth)/2. Glyphs land as bright cells; escapes pass through.
-func putCenteredAt(f *render.Frame, y int, line string, dim bool) {
-	vw := visibleLen(line)
-	x0 := (GridW - vw) / 2
-	cx := x0
-	inEsc := false
-	var esc strings.Builder
-	for i := 0; i < len(line); i++ {
-		c := line[i]
-		if c == '\x1b' {
-			inEsc = true
-			esc.Reset()
-			esc.WriteByte(c)
-			continue
-		}
-		if inEsc {
-			esc.WriteByte(c)
-			if c == 'm' {
-				inEsc = false
-			}
-			continue
-		}
-		lum := float32(0.75)
-		if dim {
-			lum = 0.35
-		}
-		if cx >= 0 && cx < GridW && y >= 0 && y < GridH {
-			f.SetCell(cx, y, render.Cell{Ch: c, Lum: lum})
-		}
-		cx++
-	}
-}
-
-// scaleToFit centers points at origin and scales them to fit the given
-// width/height extents in world units.
-func scaleToFit(points []model3d.Point, wantXZ, wantY float64) {
+// scaleToFit centers points at origin and scales them uniformly so both
+// horizontal and vertical extents fit the wanted world-space radii.
+func scaleToFit(points []model3d.Point, wantRX, wantRY float64) {
 	minX, maxX := math.Inf(1), math.Inf(-1)
 	minY, maxY := math.Inf(1), math.Inf(-1)
 	minZ, maxZ := math.Inf(1), math.Inf(-1)
@@ -263,10 +303,13 @@ func scaleToFit(points []model3d.Point, wantXZ, wantY float64) {
 		minZ, maxZ = math.Min(minZ, z), math.Max(maxZ, z)
 	}
 	cx, cy, cz := (minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2
-	sx, sy, sz := maxX-minX, maxY-minY, maxZ-minZ
-	fit := math.Min(wantXZ/math.Max(sx, 1e-6), wantXZ/math.Max(sz, 1e-6))
-	fitY := wantY / math.Max(sy, 1e-6)
-	s := math.Min(fit, fitY)
+	rx := math.Max(maxX-minX, 1e-6) / 2
+	ry := math.Max(maxY-minY, 1e-6) / 2
+	rz := math.Max(maxZ-minZ, 1e-6) / 2
+
+	// The board is flat; while spinning, its horizontal extent varies
+	// between rx and rz, so fit the larger of the two.
+	s := math.Min(wantRX/math.Max(math.Max(rx, rz), 1e-6), wantRY/math.Max(ry, 1e-6))
 	for i := range points {
 		points[i].Pos[0] = float32((float64(points[i].Pos[0]) - cx) * s)
 		points[i].Pos[1] = float32((float64(points[i].Pos[1]) - cy) * s)
@@ -286,25 +329,4 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// visibleLen counts printable characters, skipping ANSI escape sequences.
-func visibleLen(s string) int {
-	n := 0
-	inEsc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == '\x1b' {
-			inEsc = true
-			continue
-		}
-		if inEsc {
-			if c == 'm' {
-				inEsc = false
-			}
-			continue
-		}
-		n++
-	}
-	return n
 }
