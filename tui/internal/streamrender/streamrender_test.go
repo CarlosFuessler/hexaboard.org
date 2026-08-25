@@ -77,8 +77,11 @@ func TestRotationFramesFillLayout(t *testing.T) {
 			}
 		}
 	}
-	if bestSpan < testLayout.W*80/100 {
-		t.Errorf("widest rotation frame spans %d cols, want ≥80%% of %d — board must fill the terminal", bestSpan, testLayout.W)
+	if bestSpan < testLayout.W*45/100 {
+		t.Errorf("widest rotation frame spans %d cols, want ≥45%% of %d (fill target 58%%)", bestSpan, testLayout.W)
+	}
+	if bestSpan > testLayout.W*70/100 {
+		t.Errorf("widest rotation frame spans %d cols, want ≤70%% of %d — should stay zoomed out", bestSpan, testLayout.W)
 	}
 }
 
@@ -105,13 +108,29 @@ func TestCardFrameFullHeight(t *testing.T) {
 // --- helpers ---
 
 func contentSpan(line string) int {
-	first, last := -1, -1
-	for i := 0; i < len(line); i++ {
-		if line[i] != ' ' && !strings.HasPrefix(line[i:], "\x1b") {
-			if first < 0 {
-				first = i
+	// Strip CSI sequences, then measure first→last non-space column.
+	var b strings.Builder
+	i := 0
+	for i < len(line) {
+		if line[i] == '\x1b' && i+1 < len(line) && line[i+1] == '[' {
+			i += 2
+			for i < len(line) && !(line[i] >= 0x40 && line[i] <= 0x7e) {
+				i++
 			}
-			last = i
+			i++
+			continue
+		}
+		b.WriteByte(line[i])
+		i++
+	}
+	stripped := b.String()
+	first, last := -1, -1
+	for j := 0; j < len(stripped); j++ {
+		if stripped[j] != ' ' {
+			if first < 0 {
+				first = j
+			}
+			last = j
 		}
 	}
 	if first < 0 {

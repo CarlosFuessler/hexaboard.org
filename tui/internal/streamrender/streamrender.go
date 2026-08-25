@@ -120,10 +120,9 @@ func BootFrames(l Layout, count int, rng *rand.Rand) []bundle.Frame {
 }
 
 // RotationFrames bakes one seamless loop of the point cloud spinning
-// around its vertical axis. The cloud is scaled per-layout so its
-// projection fills ~92% of the width and ~85% of the body height. The
-// bottom two rows carry an integrated dim status line, keeping frames
-// full-height.
+// around its vertical axis with a fixed camera tilt, mirroring the
+// website's elevated OrbitControls view. Frames contain nothing but the
+// model — zoomed out enough to read as a clean product shot.
 func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame, error) {
 	if len(points) == 0 {
 		return nil, fmt.Errorf("streamrender: no points to rotate")
@@ -132,19 +131,21 @@ func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame
 	const (
 		dist  = 8.0
 		pitch = -0.38 // camera looks down at the board, like the site viewer
-	)
-	bodyRows := l.H - 2 // last two rows reserved for status
 
-	// The tilt foreshortens vertical extent; compensate so the board
-	// still fills ~85% of the body height.
+		fillW = 0.58 // fraction of columns the board may span
+		fillH = 0.52 // fraction of rows
+	)
+	bodyRows := l.H
+
+	// The tilt foreshortens vertical extent; compensate via cos(pitch).
 	fill := math.Cos(pitch)
 	scaleY := float64(bodyRows) / (2 * math.Tan((math.Pi/4)/2))
 	aspect := 2.0
 
 	// World-space radii that project onto the target fractions.
-	targetHalfW := (float64(l.W) / 2) * 0.92
+	targetHalfW := (float64(l.W) / 2) * fillW
 	wantRX := targetHalfW * dist / (scaleY * aspect)
-	targetHalfH := (float64(bodyRows) / 2) * 0.85 / fill
+	targetHalfH := (float64(bodyRows) / 2) * fillH / fill
 	wantRY := targetHalfH * dist / scaleY
 
 	scaleToFit(points, wantRX, wantRY)
@@ -159,12 +160,7 @@ func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame
 			Pitch:    pitch,
 			Distance: dist,
 		})
-		full := render.NewBlank(l.W, l.H)
-		blit(f, full, 0, 0)
-		writeASCIIDim(full, l.H-2, 2, "rotating · hexaboard v3 display")
-		writeASCIIDimRight(full, l.H-2, "ctrl-c exits")
-		writeASCIIDimRight(full, l.H-1, "clickable version: curl -fsSL hexaboard.org/install.sh | sh")
-		frames = append(frames, bundle.Frame{DelayMS: 50, Body: EncodeFrame(full)})
+		frames = append(frames, bundle.Frame{DelayMS: 50, Body: EncodeFrame(f)})
 	}
 	return frames, nil
 }

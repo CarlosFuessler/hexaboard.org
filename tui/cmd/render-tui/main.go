@@ -42,17 +42,13 @@ func main() {
 	fatalIf(err)
 	fmt.Printf("loaded %d points\n", len(points))
 
-	// The stream IS the product shot: brief boot, then nothing but the
-	// spinning board, forever.
-	rng := rand.New(rand.NewSource(42))
-	var frames []bundle.Frame
-	frames = append(frames, streamrender.BootFrames(grid, 20, rng)...)
-	rot, err := streamrender.RotationFrames(grid, points, steps)
+	// The stream IS the product shot: nothing but the spinning board,
+	// forever.
+	frames, err := streamrender.RotationFrames(grid, points, steps)
 	fatalIf(err)
-	frames = append(frames, rot...)
 
 	out := filepath.Join(*dir, "tui.bin")
-	if err := bundle.Write(out, frames, bootFrames); err != nil {
+	if err := bundle.Write(out, frames, 0); err != nil {
 		fatalIf(err)
 	}
 	total := 0
