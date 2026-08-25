@@ -110,7 +110,7 @@ func BootFrames(l Layout, count int, rng *rand.Rand) []bundle.Frame {
 		case t < count/4:
 			status = "connecting..."
 		}
-		hint := fmt.Sprintf("hexaboard.org · curl edition · ctrl-c exits · size wrong? reload /tui?size=xl")
+		hint := "hexaboard.org · curl edition · ctrl-c exits"
 		writeASCIIDim(grid, l.H-1, 2, status)
 		writeASCIIDimRight(grid, l.H-1, hint)
 
@@ -129,15 +129,22 @@ func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame
 		return nil, fmt.Errorf("streamrender: no points to rotate")
 	}
 
-	const dist = 8.0
+	const (
+		dist  = 8.0
+		pitch = -0.38 // camera looks down at the board, like the site viewer
+	)
 	bodyRows := l.H - 2 // last two rows reserved for status
+
+	// The tilt foreshortens vertical extent; compensate so the board
+	// still fills ~85% of the body height.
+	fill := math.Cos(pitch)
 	scaleY := float64(bodyRows) / (2 * math.Tan((math.Pi/4)/2))
 	aspect := 2.0
 
 	// World-space radii that project onto the target fractions.
 	targetHalfW := (float64(l.W) / 2) * 0.92
 	wantRX := targetHalfW * dist / (scaleY * aspect)
-	targetHalfH := (float64(bodyRows) / 2) * 0.85
+	targetHalfH := (float64(bodyRows) / 2) * 0.85 / fill
 	wantRY := targetHalfH * dist / scaleY
 
 	scaleToFit(points, wantRX, wantRY)
@@ -149,13 +156,14 @@ func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame
 			Width:    l.W,
 			Height:   bodyRows,
 			Yaw:      yaw,
+			Pitch:    pitch,
 			Distance: dist,
 		})
 		full := render.NewBlank(l.W, l.H)
 		blit(f, full, 0, 0)
 		writeASCIIDim(full, l.H-2, 2, "rotating · hexaboard v3 display")
 		writeASCIIDimRight(full, l.H-2, "ctrl-c exits")
-		writeASCIIDimRight(full, l.H-1, "size wrong? reload /tui?size=xl")
+		writeASCIIDimRight(full, l.H-1, "interactive version: tui/ in this repo")
 		frames = append(frames, bundle.Frame{DelayMS: 50, Body: EncodeFrame(full)})
 	}
 	return frames, nil

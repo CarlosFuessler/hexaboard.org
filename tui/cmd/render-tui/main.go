@@ -28,19 +28,13 @@ import (
 
 const (
 	sampleCount = 20000
-	steps       = 72
+	steps       = 90
 	bootFrames  = 45
 )
 
-var sizes = []struct {
-	name string
-	l    streamrender.Layout
-}{
-	{"s", streamrender.Layout{W: 80, H: 24}},
-	{"m", streamrender.Layout{W: 110, H: 32}},
-	{"l", streamrender.Layout{W: 150, H: 42}},
-	{"xl", streamrender.Layout{W: 200, H: 56}},
-}
+// grid is the one true TUI size: large enough to feel immersive on any
+// modern terminal, small enough that rows never wrap on 80-col ones.
+var grid = streamrender.Layout{W: 110, H: 32}
 
 func main() {
 	dir := flag.String("dir", filepath.Join("..", "public"), "output directory")
@@ -58,41 +52,39 @@ func main() {
 	fmt.Println("fetched site content")
 
 	rng := rand.New(rand.NewSource(42))
-	for _, sz := range sizes {
-		var frames []bundle.Frame
-		frames = append(frames, streamrender.BootFrames(sz.l, bootFrames, rng)...)
-		frames = append(frames, buildCycle(sz.l, c, points)...)
+	var frames []bundle.Frame
+	frames = append(frames, streamrender.BootFrames(grid, bootFrames, rng)...)
+	frames = append(frames, buildCycle(c, points)...)
 
-		out := filepath.Join(*dir, fmt.Sprintf("tui-%s.bin", sz.name))
-		if err := bundle.Write(out, frames, bootFrames); err != nil {
-			fatalIf(err)
-		}
-		total := 0
-		for _, f := range frames {
-			total += len(f.Body)
-		}
-		fmt.Printf("wrote %s (%dx%d): %d frames, %.1f KB\n",
-			out, sz.l.W, sz.l.H, len(frames), float64(total)/1024)
+	out := filepath.Join(*dir, "tui.bin")
+	if err := bundle.Write(out, frames, bootFrames); err != nil {
+		fatalIf(err)
 	}
+	total := 0
+	for _, f := range frames {
+		total += len(f.Body)
+	}
+	fmt.Printf("wrote %s (%dx%d): %d frames, %.1f KB\n",
+		out, grid.W, grid.H, len(frames), float64(total)/1024)
 }
 
 // buildCycle assembles the endlessly repeating sequence:
 // hero → rotation → features → rotation → specs → rotation.
-func buildCycle(l streamrender.Layout, c content.Content, points []model3d.Point) []bundle.Frame {
-	rot, err := streamrender.RotationFrames(l, points, steps)
+func buildCycle(c content.Content, points []model3d.Point) []bundle.Frame {
+	rot, err := streamrender.RotationFrames(grid, points, steps)
 	fatalIf(err)
 
 	var cycle []bundle.Frame
-	cycle = append(cycle, heroCard(l, c))
+	cycle = append(cycle, heroCard(c))
 	cycle = append(cycle, rot...)
-	cycle = append(cycle, featuresCard(l, c))
+	cycle = append(cycle, featuresCard(c))
 	cycle = append(cycle, rot...)
-	cycle = append(cycle, specsCard(l, c))
+	cycle = append(cycle, specsCard(c))
 	cycle = append(cycle, rot...)
 	return cycle
 }
 
-func heroCard(l streamrender.Layout, c content.Content) bundle.Frame {
+func heroCard(c content.Content) bundle.Frame {
 	rows := []streamrender.CardRow{
 		{Value: c.Hero.Title},
 		{Value: c.Hero.Tagline},
@@ -105,10 +97,10 @@ func heroCard(l streamrender.Layout, c content.Content) bundle.Frame {
 	for _, l := range c.Links {
 		rows = append(rows, streamrender.CardRow{Label: "→", Value: l.Label + ": " + l.URL})
 	}
-	return streamrender.CardFrame(l, c.Hero.Eyebrow, rows, "ctrl-c exits", 4000)
+	return streamrender.CardFrame(grid, c.Hero.Eyebrow, rows, "ctrl-c exits", 5000)
 }
 
-func featuresCard(l streamrender.Layout, c content.Content) bundle.Frame {
+func featuresCard(c content.Content) bundle.Frame {
 	var rows []streamrender.CardRow
 	for _, f := range c.Features {
 		rows = append(rows, streamrender.CardRow{Value: f.Title})
@@ -117,15 +109,15 @@ func featuresCard(l streamrender.Layout, c content.Content) bundle.Frame {
 		}
 		rows = append(rows, streamrender.CardRow{})
 	}
-	return streamrender.CardFrame(l, "// features", rows, "built for everyone", 4500)
+	return streamrender.CardFrame(grid, "// features", rows, "built for everyone", 5500)
 }
 
-func specsCard(l streamrender.Layout, c content.Content) bundle.Frame {
+func specsCard(c content.Content) bundle.Frame {
 	rows := make([]streamrender.CardRow, 0, len(c.Specs))
 	for _, s := range c.Specs {
 		rows = append(rows, streamrender.CardRow{Label: s.Label, Value: s.Value})
 	}
-	return streamrender.CardFrame(l, "// specifications", rows, "technical details", 4500)
+	return streamrender.CardFrame(grid, "// specifications", rows, "technical details", 5000)
 }
 
 func defaultCloud() string {

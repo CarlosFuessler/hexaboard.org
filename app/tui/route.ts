@@ -13,9 +13,6 @@ interface Bundle {
   bootCount: number;
 }
 
-const SIZES = new Set(["s", "m", "l", "xl"]);
-const DEFAULT_SIZE = "m";
-
 function decodeBundle(data: Buffer): Bundle {
   if (data.length < 13 || data.subarray(0, 5).toString("binary") !== "HXT\u0002\u0001") {
     throw new Error("tui bundle: bad magic");
@@ -37,11 +34,7 @@ function decodeBundle(data: Buffer): Bundle {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function GET(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const requested = (url.searchParams.get("size") ?? DEFAULT_SIZE).toLowerCase();
-  const size = SIZES.has(requested) ? requested : DEFAULT_SIZE;
-
-  const data = await readFile(path.join(process.cwd(), "public", `tui-${size}.bin`));
+  const data = await readFile(path.join(process.cwd(), "public", "tui.bin"));
   const { frames, bootCount } = decodeBundle(data);
   const cycleLen = frames.length - bootCount;
   const encoder = new TextEncoder();
