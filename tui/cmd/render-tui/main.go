@@ -13,15 +13,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"hexaboard.org/tui/internal/bundle"
-	"hexaboard.org/tui/internal/content"
 	"hexaboard.org/tui/internal/model3d"
 	"hexaboard.org/tui/internal/streamrender"
 )
@@ -29,7 +25,7 @@ import (
 const (
 	sampleCount = 20000
 	steps       = 90
-	bootFrames  = 45
+	bootFrames  = 20
 )
 
 // grid is the one true TUI size: large enough to feel immersive on any
@@ -40,21 +36,20 @@ func main() {
 	dir := flag.String("dir", filepath.Join("..", "public"), "output directory")
 	cloudPath := flag.String("cloud", defaultCloud(), "cached point cloud path")
 	objPath := flag.String("obj", "", "OBJ file to sample directly (overrides -cloud)")
-	apiURL := flag.String("api", "https://hexaboard.org/api/tui", "content API URL")
 	flag.Parse()
 
 	points, err := loadPoints(*objPath, *cloudPath)
 	fatalIf(err)
 	fmt.Printf("loaded %d points\n", len(points))
 
-	c, err := fetchContent(*apiURL)
-	fatalIf(err)
-	fmt.Println("fetched site content")
-
+	// The stream IS the product shot: brief boot, then nothing but the
+	// spinning board, forever.
 	rng := rand.New(rand.NewSource(42))
 	var frames []bundle.Frame
-	frames = append(frames, streamrender.BootFrames(grid, bootFrames, rng)...)
-	frames = append(frames, buildCycle(c, points)...)
+	frames = append(frames, streamrender.BootFrames(grid, 20, rng)...)
+	rot, err := streamrender.RotationFrames(grid, points, steps)
+	fatalIf(err)
+	frames = append(frames, rot...)
 
 	out := filepath.Join(*dir, "tui.bin")
 	if err := bundle.Write(out, frames, bootFrames); err != nil {
@@ -66,58 +61,6 @@ func main() {
 	}
 	fmt.Printf("wrote %s (%dx%d): %d frames, %.1f KB\n",
 		out, grid.W, grid.H, len(frames), float64(total)/1024)
-}
-
-// buildCycle assembles the endlessly repeating sequence:
-// hero → rotation → features → rotation → specs → rotation.
-func buildCycle(c content.Content, points []model3d.Point) []bundle.Frame {
-	rot, err := streamrender.RotationFrames(grid, points, steps)
-	fatalIf(err)
-
-	var cycle []bundle.Frame
-	cycle = append(cycle, heroCard(c))
-	cycle = append(cycle, rot...)
-	cycle = append(cycle, featuresCard(c))
-	cycle = append(cycle, rot...)
-	cycle = append(cycle, specsCard(c))
-	cycle = append(cycle, rot...)
-	return cycle
-}
-
-func heroCard(c content.Content) bundle.Frame {
-	rows := []streamrender.CardRow{
-		{Value: c.Hero.Title},
-		{Value: c.Hero.Tagline},
-		{},
-	}
-	for _, t := range c.Hero.TypingLines {
-		rows = append(rows, streamrender.CardRow{Label: "$", Value: t})
-	}
-	rows = append(rows, streamrender.CardRow{})
-	for _, l := range c.Links {
-		rows = append(rows, streamrender.CardRow{Label: "→", Value: l.Label + ": " + l.URL})
-	}
-	return streamrender.CardFrame(grid, c.Hero.Eyebrow, rows, "ctrl-c exits", 5000)
-}
-
-func featuresCard(c content.Content) bundle.Frame {
-	var rows []streamrender.CardRow
-	for _, f := range c.Features {
-		rows = append(rows, streamrender.CardRow{Value: f.Title})
-		for _, line := range wrap(f.Description, 58) {
-			rows = append(rows, streamrender.CardRow{Value: line, Dim: true})
-		}
-		rows = append(rows, streamrender.CardRow{})
-	}
-	return streamrender.CardFrame(grid, "// features", rows, "built for everyone", 5500)
-}
-
-func specsCard(c content.Content) bundle.Frame {
-	rows := make([]streamrender.CardRow, 0, len(c.Specs))
-	for _, s := range c.Specs {
-		rows = append(rows, streamrender.CardRow{Label: s.Label, Value: s.Value})
-	}
-	return streamrender.CardFrame(grid, "// specifications", rows, "technical details", 5000)
 }
 
 func defaultCloud() string {
@@ -142,41 +85,6 @@ func loadPoints(objPath, cloudPath string) ([]model3d.Point, error) {
 		return model3d.Sample(mesh, sampleCount, rand.New(rand.NewSource(42))), nil
 	}
 	return model3d.LoadCloud(cloudPath)
-}
-
-func fetchContent(url string) (content.Content, error) {
-	resp, err := http.Get(url) //nolint:gosec // URL comes from a flag
-	if err != nil {
-		return content.Content{}, err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return content.Content{}, err
-	}
-	return content.Decode(data)
-}
-
-// wrap wraps text to n visible columns without breaking words.
-func wrap(text string, n int) []string {
-	words := strings.Fields(text)
-	var lines []string
-	line := ""
-	for _, w := range words {
-		switch {
-		case line == "":
-			line = w
-		case len(line)+1+len(w) <= n:
-			line += " " + w
-		default:
-			lines = append(lines, line)
-			line = w
-		}
-	}
-	if line != "" {
-		lines = append(lines, line)
-	}
-	return lines
 }
 
 func fatalIf(err error) {
