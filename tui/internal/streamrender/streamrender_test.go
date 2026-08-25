@@ -2,7 +2,6 @@ package streamrender
 
 import (
 	"math"
-	"math/rand"
 	"strings"
 	"testing"
 
@@ -34,7 +33,14 @@ func TestEncodeGroupsAdjacentSameColor(t *testing.T) {
 
 func TestEncodeAlwaysFullGrid(t *testing.T) {
 	l := Layout{W: 30, H: 8}
-	frames := BootFrames(l, 5, rand.New(rand.NewSource(1)))
+	pts := []model3d.Point{
+		{Pos: [3]float32{-1, -0.5, 0}, Normal: [3]float32{0, 0.3, -0.95}},
+		{Pos: [3]float32{1, 0.5, 0}, Normal: [3]float32{0, 0.3, -0.95}},
+	}
+	frames, err := RotationFrames(l, pts, 3)
+	if err != nil {
+		t.Fatalf("RotationFrames() unexpected error: %v", err)
+	}
 	for i, fr := range frames {
 		// H lines of exactly W visible characters each.
 		body := strings.TrimSuffix(fr.Body, "\n")
@@ -82,26 +88,6 @@ func TestRotationFramesFillLayout(t *testing.T) {
 	}
 	if bestSpan > testLayout.W*70/100 {
 		t.Errorf("widest rotation frame spans %d cols, want ≤70%% of %d — should stay zoomed out", bestSpan, testLayout.W)
-	}
-}
-
-func TestCardFrameContainsCopy(t *testing.T) {
-	fr := CardFrame(testLayout, "// specs",
-		[]CardRow{{Label: "Layout", Value: "2x3"}, {Label: "USB-C", Value: "yes"}},
-		"hexaboard.org", 4000)
-	if !strings.Contains(fr.Body, "specs") || !strings.Contains(fr.Body, "Layout") {
-		t.Errorf("card body missing copy")
-	}
-	if !strings.Contains(fr.Body, "+---") {
-		t.Error("card should have an ascii border")
-	}
-}
-
-func TestCardFrameFullHeight(t *testing.T) {
-	fr := CardFrame(testLayout, "// t", []CardRow{{Label: "a", Value: "b"}}, "footer", 1000)
-	lines := strings.Split(strings.TrimSuffix(fr.Body, "\n"), "\n")
-	if len(lines) != testLayout.H {
-		t.Errorf("card frame has %d lines, want %d", len(lines), testLayout.H)
 	}
 }
 

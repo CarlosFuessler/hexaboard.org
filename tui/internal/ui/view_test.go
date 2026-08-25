@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func TestDebugFullTabBarRenders(t *testing.T) {
+func TestFullTabBarRendersAndViewerRequest(t *testing.T) {
 	m := New(Config{})
 	m, _ = step(m, tea.WindowSizeMsg{Width: 100, Height: 30})
 	m, _ = step(m, contentLoadedMsg{content: sampleContent()})

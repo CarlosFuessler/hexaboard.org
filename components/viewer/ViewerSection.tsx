@@ -113,35 +113,9 @@ export default function ViewerSection() {
         }
       },
       (error) => {
-        console.warn("Retrying with alternate path...", error);
-        // Fallback try with /models/ path
-        loader.load(
-          "/models/Hexaboard_v3_Display.obj",
-          (obj2) => {
-            obj2.traverse((child) => {
-              if (child instanceof THREE.Mesh) {
-                child.material = new THREE.MeshStandardMaterial({
-                  color: new THREE.Color("#6b7db8"),
-                  metalness: 0.7,
-                  roughness: 0.25,
-                });
-                child.castShadow = true;
-                child.receiveShadow = true;
-              }
-            });
-            obj2.scale.setScalar(0.12);
-            obj2.rotation.set(-Math.PI / 2, 0, 0);
-            obj2.position.set(0, -0.2, 0);
-            scene.add(obj2);
-            setIsLoading(false);
-          },
-          undefined,
-          (err2) => {
-            console.error("3D model failed to load:", err2);
-            setIsLoading(false);
-            setLoadError(true);
-          }
-        );
+        console.error("3D model failed to load:", error);
+        setIsLoading(false);
+        setLoadError(true);
       }
     );
 
