@@ -163,7 +163,7 @@ func RotationFrames(l Layout, points []model3d.Point, steps int) ([]bundle.Frame
 		blit(f, full, 0, 0)
 		writeASCIIDim(full, l.H-2, 2, "rotating · hexaboard v3 display")
 		writeASCIIDimRight(full, l.H-2, "ctrl-c exits")
-		writeASCIIDimRight(full, l.H-1, "interactive version: tui/ in this repo")
+		writeASCIIDimRight(full, l.H-1, "clickable version: curl -fsSL hexaboard.org/install.sh | sh")
 		frames = append(frames, bundle.Frame{DelayMS: 50, Body: EncodeFrame(full)})
 	}
 	return frames, nil
