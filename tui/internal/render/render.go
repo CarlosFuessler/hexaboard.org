@@ -39,6 +39,30 @@ type Frame struct {
 // CellAt returns the cell at column x, row y.
 func (f *Frame) CellAt(x, y int) Cell { return f.cells[y*f.W+x] }
 
+// SetCell overwrites one cell (used by tests and frame tooling).
+func (f *Frame) SetCell(x, y int, c Cell) { f.cells[y*f.W+x] = c }
+
+// Fill resets every cell to ch with zero luminance.
+func (f *Frame) Fill(ch byte) {
+	for i := range f.cells {
+		f.cells[i].Ch = ch
+		f.cells[i].Lum = 0
+	}
+}
+
+// LumIndex maps luminance [0,1] onto a Ramp index.
+func LumIndex(lum float32) int {
+	n := len(Ramp)
+	i := int(lum*float32(n-1) + 0.5)
+	if i < 0 {
+		return 0
+	}
+	if i > n-1 {
+		return n - 1
+	}
+	return i
+}
+
 // AnyNonSpace returns the first non-space glyph.
 func (f *Frame) AnyNonSpace() (byte, bool) {
 	for _, c := range f.cells {
@@ -108,6 +132,16 @@ func (f *Frame) String() string {
 	return b.String()
 }
 
+// NewBlank returns an empty W×H frame filled with spaces.
+func NewBlank(w, h int) *Frame {
+	if w <= 0 || h <= 0 {
+		w, h = 1, 1
+	}
+	f := &Frame{W: w, H: h, cells: make([]Cell, w*h)}
+	f.Fill(' ')
+	return f
+}
+
 // Render projects already-centered points into a W×H frame.
 func Render(points []model3d.Point, p Params) *Frame {
 	if p.Width <= 0 || p.Height <= 0 {
@@ -121,7 +155,7 @@ func Render(points []model3d.Point, p Params) *Frame {
 	}
 
 	f := &Frame{W: p.Width, H: p.Height, cells: make([]Cell, p.Width*p.Height)}
-	f.fill(' ')
+	f.Fill(' ')
 
 	if len(points) == 0 {
 		return f
@@ -164,23 +198,10 @@ func Render(points []model3d.Point, p Params) *Frame {
 			lum := lambert(points[i].Normal, p)
 			idx := iy*p.Width + ix
 			f.cells[idx].Lum = lum
-			f.cells[idx].Ch = Ramp[lumToIndex(lum)]
+			f.cells[idx].Ch = Ramp[LumIndex(lum)]
 		}
 	}
 	return f
-}
-
-func (f *Frame) fill(ch byte) {
-	for i := range f.cells {
-		f.cells[i].Ch = ch
-		f.cells[i].Lum = 0
-	}
-}
-
-func lumToIndex(lum float32) int {
-	n := len(Ramp)
-	i := int(lum*float32(n-1) + 0.5)
-	return clamp(i, 0, n-1)
 }
 
 func lambert(normal [3]float32, _ Params) float32 {
